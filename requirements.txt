@@ -1,0 +1,6 @@
+langchain-openai>=1.1.10
+langchain-community>=0.4.1
+langchain-core>=1.2.0
+langchain>=1.2.0
+streamlit>=1.28.0
+wikipedia>=1.4.0
