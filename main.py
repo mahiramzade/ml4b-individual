@@ -46,12 +46,6 @@ MODEL_CONFIG = {
         "input_cost_per_million": 1.25,
         "output_cost_per_million": 10.00,
     },
-    "GPT 4.1 Mini": {
-        "model_id": "gpt-4.1-mini-2025-04-14",
-        "extra_kwargs": {},
-        "input_cost_per_million": 0.40,
-        "output_cost_per_million": 1.60,
-    },
 }
 
 

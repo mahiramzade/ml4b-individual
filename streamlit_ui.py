@@ -48,12 +48,8 @@ with st.sidebar:
         st.error("OpenAI API key is required. Enter your key above to continue.")
 
     st.subheader("Model")
-    selected_model = st.selectbox(
-        "Select model",
-        options=list(MODEL_CONFIG.keys()),
-        key="model_select",
-    )
-    st.session_state.selected_model = selected_model
+    st.session_state.selected_model = "GPT 5.1"
+    st.caption("Using GPT 5.1")
 
     # Token usage: total, prompt, completion in one row; progress bar and reset on the next row.
     st.subheader("Token Usage")
