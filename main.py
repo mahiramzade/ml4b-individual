@@ -12,11 +12,13 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_community.retrievers import WikipediaRetriever
 
-
+# Retriever that fetches Wikipedia articles by search query; top_k_results=5 limits to 5 results per call.
 wikipedia_retriever = WikipediaRetriever(top_k_results=5)
 
 
 class WikipediaPost(TypedDict):
+    """Type for a single Wikipedia result: title, URL, and summary for the agent to cite."""
+
     title: str
     url: str
     summary: str
@@ -31,10 +33,12 @@ def get_wikipedia_posts(industry_name: str) -> list[WikipediaPost]:
     Returns:
         A list of Wikipedia posts for the given industry name.
     """
+    # Invoke the retriever and return only metadata (title, url, summary) for each result.
     result = wikipedia_retriever.invoke(industry_name)
     return [post.metadata for post in result]
 
 
+# Per-model settings: OpenAI model id, extra kwargs (e.g. reasoning_effort), and cost per million tokens for billing.
 MODEL_CONFIG = {
     "GPT 5.1": {
         "model_id": "gpt-5.1",
@@ -52,16 +56,20 @@ MODEL_CONFIG = {
 
 
 def create_model_and_agent(api_key: str, model_name: str):
+    """Build a LangChain chat model and an agent that can call get_wikipedia_posts for industry research."""
     config = MODEL_CONFIG[model_name]
+    # ChatOpenAI is the LLM; temperature=0 for deterministic answers.
     model = ChatOpenAI(
         model=config["model_id"],
         temperature=0.0,
         api_key=api_key,
         **config["extra_kwargs"],
     )
+    # Agent uses the model and has access to the Wikipedia tool only.
     return create_agent(model, [get_wikipedia_posts])
 
 
+# System prompt that defines the assistant as a market-research analyst and how to format answers (Summary + Sources).
 SYSTEM_MESSAGE = SystemMessage(
     content="""\
 You are a research assistant for a business analyst who conducts market research at a large corporation.
@@ -89,7 +97,8 @@ Sources:
 """
 )
 
+# Maximum tokens allowed per chat session before the user must reset; used for progress bar and cost control.
 TOKEN_LIMIT = 20000
 
-# Launch Streamlit UI (at end so streamlit_ui can import from this module)
+# Launch Streamlit UI (at end so streamlit_ui can import from this module without circular import issues).
 import streamlit_ui  # noqa: F401, E402
