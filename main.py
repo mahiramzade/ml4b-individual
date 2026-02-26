@@ -51,17 +51,19 @@ MODEL_CONFIG = {
 }
 
 
-def create_model_and_agent(api_key: str, model_name: str):
-    """Build a LangChain chat model and an agent that can call get_wikipedia_posts for industry research."""
+def create_model(api_key: str, model_name: str) -> ChatOpenAI:
+    """Build the ChatOpenAI LLM for the assistant (and for the evaluator)"""
     config = MODEL_CONFIG[model_name]
-    # ChatOpenAI is the LLM; temperature=0 for deterministic answers.
-    model = ChatOpenAI(
+    return ChatOpenAI(
         model=config["model_id"],
         temperature=0.0,
         api_key=api_key,
         **config["extra_kwargs"],
     )
-    # Agent uses the model and has access to the Wikipedia tool only.
+
+def create_model_and_agent(api_key: str, model_name: str):
+    """Build a LangChain chat model and an agent that calls get_wikipedia_posts for industry research."""
+    model = create_model(api_key, model_name)
     return create_agent(model, [get_wikipedia_posts])
 
 

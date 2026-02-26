@@ -1,19 +1,26 @@
 """
 Tests for the market-research assistant:
 
-- Structured output: Summary, Sources, markdown links (required only for full answers, not clarification).
-- Relevance: summary and sources match the user request (heuristic).
-- Refusal: non-industry requests get a clear refusal message.
-- Grounding: summary content traceable to sources (heuristic; cannot distinguish paraphrasing from hallucination).
+- Unit tests: structured output, relevance, refusal, grounding (no API calls).
+- Integration tests: call real assistant with OPENAI_API_KEY; skipped when not set.
+
+Structured output: Summary, Sources, markdown links (required only for full answers, not clarification).
+Relevance: summary and sources match the user request (heuristic).
+Refusal: non-industry requests get a clear refusal message.
+Grounding: summary content traceable to sources (heuristic; cannot distinguish paraphrasing from hallucination).
 
 We do not test WikipediaRetriever(top_k_results=EXPECTED_SOURCE_COUNT); it is a provided dependency.
 """
 
 import re  # Regex for parsing response text (e.g. source links, word tokenization, sentence splits)
 import pytest  # Test runner for discovery and running tests
+from langchain.messages import HumanMessage
 from stop_words import get_stop_words
 
 from constants import EXPECTED_SOURCE_COUNT, SUMMARY_WORD_LIMIT
+from conftest import skip_if_no_api_key
+from main import MODEL_CONFIG, SYSTEM_MESSAGE, create_model, create_model_and_agent
+from evaluator import evaluate_batch
 
 # -----------------------------------------------------------------------------
 # Test-only constants
@@ -355,3 +362,99 @@ def test_summary_fully_hallucinated_scores_low():
     summary = "The moon is made of cheese. In 2050 everyone will live on Mars."
     assert _word_overlap_ratio(summary, sources) < 0.3
     assert _sentence_grounding_score(summary, sources) < 0.5
+
+
+# -----------------------------------------------------------------------------
+# 5. Integration tests (real API; require OPENAI_API_KEY; skipped when not set)
+# -----------------------------------------------------------------------------
+
+
+def _extract_response_text(result: dict) -> str:
+    """Extract final assistant response text from agent invoke result."""
+    messages = result.get("messages", [])
+    if not messages:
+        return ""
+    last = messages[-1]
+    content = getattr(last, "content", None)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                parts.append(item.get("text", ""))
+            elif isinstance(item, str):
+                parts.append(item)
+        return "".join(parts)
+    return str(content) if content else ""
+
+
+def _invoke_assistant(agent, query: str) -> str:
+    """Invoke agent with query and return response text."""
+    result = agent.invoke(
+        {
+            "messages": [
+                SYSTEM_MESSAGE,
+                HumanMessage(content=query),
+            ]
+        }
+    )
+    return _extract_response_text(result)
+
+
+@skip_if_no_api_key
+@pytest.mark.integration
+def test_integration_industry_query_has_structure(api_key):
+    """Real API: industry query returns Summary + Sources with valid format."""
+    agent = create_model_and_agent(api_key, "GPT 5.1")
+    response = _invoke_assistant(agent, "Give me a market overview of the pharmaceutical industry.")
+
+    assert _should_apply_structure_checks(response), (
+        f"Expected full answer for industry query; got clarification/refusal: {response[:200]}..."
+    )
+    assert _has_summary_section(response), f"Missing Summary section: {response[:300]}..."
+    assert _has_sources_section(response), f"Missing Sources section: {response[:300]}..."
+    assert _has_valid_source_count(response), (
+        f"Expected {EXPECTED_SOURCE_COUNT} sources or limited-info explanation: {response[:300]}..."
+    )
+    count = _summary_word_count(response)
+    assert count is not None and count <= SUMMARY_WORD_LIMIT, (
+        f"Summary over {SUMMARY_WORD_LIMIT} words: {count}"
+    )
+
+
+@skip_if_no_api_key
+@pytest.mark.integration
+def test_integration_industry_query_relevance(api_key):
+    """Real API: summary and sources are relevant to the user request."""
+    agent = create_model_and_agent(api_key, "GPT 5.1")
+    query = "What is the pharmaceutical industry?"
+    response = _invoke_assistant(agent, query)
+
+    if not _should_apply_structure_checks(response):
+        pytest.skip("Response was clarification/refusal; relevance check N/A")
+
+    terms = _extract_request_terms(query)
+    summary = _get_summary_content(response) or ""
+    links = _get_source_link_texts(response)
+    assert _summary_relevant_to_request(summary, terms, min_terms=1), (
+        f"Summary not relevant to request terms: {terms}"
+    )
+    assert _sources_relevant_to_request(links, terms, min_sources=1), (
+        f"Sources not relevant to request terms: {terms}"
+    )
+
+
+@skip_if_no_api_key
+@pytest.mark.integration
+def test_integration_non_industry_refusal(api_key):
+    """Real API: non-industry request gets a refusal, not a full answer."""
+    agent = create_model_and_agent(api_key, "GPT 5.1")
+    response = _invoke_assistant(
+        agent,
+        "What is the capital of France?",
+    )
+
+    assert _is_refusal_for_non_industry(response), (
+        f"Expected refusal for off-topic query; got: {response[:300]}..."
+    )
