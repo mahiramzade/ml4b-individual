@@ -109,7 +109,7 @@ if "output_cost" not in st.session_state:
 
 # Display token usage in sidebar
 with st.sidebar:
-    st.header("🔑 API Key")
+    st.subheader("🔑 API Key")
     api_key = st.text_input(
         "OpenAI API Key",
         type="password",
@@ -121,9 +121,7 @@ with st.sidebar:
     if not st.session_state.openai_api_key:
         st.error("OpenAI API key is required. Enter your key above to continue.")
 
-    st.divider()
-
-    st.header("Model")
+    st.subheader("Model")
     selected_model = st.selectbox(
         "Select model",
         options=list(MODEL_CONFIG.keys()),
@@ -131,39 +129,51 @@ with st.sidebar:
     )
     st.session_state.selected_model = selected_model
 
-    st.divider()
+    st.subheader("Token Usage")
+    tc1, tc2, tc3 = st.columns(3)
+    with tc1:
+        st.caption("Total")
+        st.caption(f"{st.session_state.total_tokens:,}")
+    with tc2:
+        st.caption("Prompt")
+        st.caption(f"{st.session_state.prompt_tokens:,}")
+    with tc3:
+        st.caption("Completion")
+        st.caption(f"{st.session_state.completion_tokens:,}")
+    prog_col, btn_col = st.columns([1, 1])
+    with prog_col:
+        st.progress(
+            min(st.session_state.total_tokens / TOKEN_LIMIT, 1.0),
+            text=f"{st.session_state.total_tokens:,} / {TOKEN_LIMIT:,}",
+        )
+    with btn_col:
+        if st.button("Reset Chat", type="primary"):
+            st.session_state.messages = [
+                {"role": "assistant", "content": "Let's start chatting! 👇"}
+            ]
+            st.session_state.total_tokens = 0
+            st.session_state.prompt_tokens = 0
+            st.session_state.completion_tokens = 0
+            st.session_state.input_cost = 0.0
+            st.session_state.output_cost = 0.0
+            st.rerun()
 
-    st.header("Token Usage")
-    st.metric("Total Tokens", f"{st.session_state.total_tokens:,}")
-    st.metric("Prompt Tokens", f"{st.session_state.prompt_tokens:,}")
-    st.metric("Completion Tokens", f"{st.session_state.completion_tokens:,}")
-    st.progress(
-        min(st.session_state.total_tokens / TOKEN_LIMIT, 1.0),
-        text=f"{st.session_state.total_tokens:,} / {TOKEN_LIMIT:,} tokens",
-    )
-
-    st.divider()
-
-    st.header("💰 Cost Tracking")
+    st.subheader("💰 Cost")
     total_cost = st.session_state.input_cost + st.session_state.output_cost
-    st.metric("Input Cost", f"${st.session_state.input_cost:.4f}")
-    st.metric("Output Cost", f"${st.session_state.output_cost:.4f}")
-    st.metric("Total Cost", f"${total_cost:.4f}", delta=None)
+    cc1, cc2, cc3 = st.columns(3)
+    with cc1:
+        st.caption("Input")
+        st.caption(f"${st.session_state.input_cost:.4f}")
+    with cc2:
+        st.caption("Output")
+        st.caption(f"${st.session_state.output_cost:.4f}")
+    with cc3:
+        st.caption("Total")
+        st.caption(f"${total_cost:.4f}")
 
     if st.session_state.total_tokens >= TOKEN_LIMIT:
-        st.error(f"⚠️ Token limit reached ({TOKEN_LIMIT:,} tokens)")
-        st.warning("Please reset the chat to continue.")
-
-    if st.button("🔄 Reset Chat", type="primary"):
-        st.session_state.messages = [
-            {"role": "assistant", "content": "Let's start chatting! 👇"}
-        ]
-        st.session_state.total_tokens = 0
-        st.session_state.prompt_tokens = 0
-        st.session_state.completion_tokens = 0
-        st.session_state.input_cost = 0.0
-        st.session_state.output_cost = 0.0
-        st.rerun()
+        st.error(f"⚠️ Token limit reached ({TOKEN_LIMIT:,})")
+        st.caption("Reset the chat to continue.")
 
 # Display chat messages from history on app rerun
 for message in st.session_state.messages:
