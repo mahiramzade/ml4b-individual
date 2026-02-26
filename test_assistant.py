@@ -6,19 +6,19 @@ Tests for the market-research assistant:
 - Refusal: non-industry requests get a clear refusal message.
 - Grounding: summary content traceable to sources (heuristic; cannot distinguish paraphrasing from hallucination).
 
-We do not test WikipediaRetriever(top_k_results=5); it is a provided dependency.
+We do not test WikipediaRetriever(top_k_results=EXPECTED_SOURCE_COUNT); it is a provided dependency.
 """
 
 import re  # Regex for parsing response text (e.g. source links, word tokenization, sentence splits)
 import pytest  # Test runner for discovery and running tests
 from stop_words import get_stop_words
 
+from constants import EXPECTED_SOURCE_COUNT, SUMMARY_WORD_LIMIT
+
 # -----------------------------------------------------------------------------
-# Constants
+# Test-only constants
 # -----------------------------------------------------------------------------
 
-EXPECTED_SOURCE_COUNT = 5
-SUMMARY_WORD_LIMIT = 500
 _STOPWORDS = set(get_stop_words("english"))
 
 # -----------------------------------------------------------------------------
@@ -152,12 +152,20 @@ Sources:
 
 
 def test_structured_output_has_source_links():
-    """Full answers should have 5 sources; fewer only if 'limited information' is stated."""
-    good_5 = """Summary\nSome analysis.\n\nSources:
-* [1](https://a)\n* [2](https://b)\n* [3](https://c)\n* [4](https://d)\n* [5](https://e)
+    f"""Assistant response should have {EXPECTED_SOURCE_COUNT} sources; fewer only if the response indicates limited information."""
+    # Normal case: EXPECTED_SOURCE_COUNT sources as requested by the system prompt
+    good_full_sources = """Summary
+Some analysis here.
+
+Sources:
+* [Post title 1](https://en.wikipedia.org/wiki/One)
+* [Post title 2](https://en.wikipedia.org/wiki/Two)
+* [Post title 3](https://en.wikipedia.org/wiki/Three)
+* [Post title 4](https://en.wikipedia.org/wiki/Four)
+* [Post title 5](https://en.wikipedia.org/wiki/Five)
 """
-    assert _count_source_links(good_5) == EXPECTED_SOURCE_COUNT
-    assert _has_valid_source_count(good_5)
+    assert _count_source_links(good_full_sources) == EXPECTED_SOURCE_COUNT
+    assert _has_valid_source_count(good_full_sources)
 
     few_with_explanation = """Summary\nLimited information available.\n\nSources:\n* [1](https://a)\n* [2](https://b)"""
     assert _has_valid_source_count(few_with_explanation)
@@ -181,13 +189,13 @@ def test_structured_output_rejects_sources_heading_with_no_content():
 
 
 def test_structured_output_summary_under_500_words():
-    """Summary section must have at most 500 words."""
+    f"""Summary section must have at most {SUMMARY_WORD_LIMIT} words."""
     good = """Summary\nThe pharmaceutical industry develops drugs and is regulated.\n\nSources:\n* [X](https://x)"""
     count = _summary_word_count(good)
     assert count is not None and count <= SUMMARY_WORD_LIMIT
 
-    long_summary = "Summary\n" + " word" * 501 + "\n\nSources:\n* [Link](https://example.com)"
-    assert _summary_word_count(long_summary) == 501
+    long_summary = "Summary\n" + " word" * (SUMMARY_WORD_LIMIT + 1) + "\n\nSources:\n* [Link](https://example.com)"
+    assert _summary_word_count(long_summary) == SUMMARY_WORD_LIMIT + 1
 
 
 # -----------------------------------------------------------------------------

@@ -12,8 +12,10 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_community.retrievers import WikipediaRetriever
 
-# Retriever that fetches Wikipedia articles by search query; top_k_results=5 limits to 5 results per call.
-wikipedia_retriever = WikipediaRetriever(top_k_results=5)
+from constants import EXPECTED_SOURCE_COUNT, SUMMARY_WORD_LIMIT, TOKEN_LIMIT
+
+# Retriever that fetches Wikipedia articles by search query; top_k limits to EXPECTED_SOURCE_COUNT results per call.
+wikipedia_retriever = WikipediaRetriever(top_k_results=EXPECTED_SOURCE_COUNT)
 
 
 class WikipediaPost(TypedDict):
@@ -72,7 +74,7 @@ Your role is to support industry analysis, competitive intelligence, and strateg
 Do not guess the industry name—if unclear or ambiguous, ask the user to clarify.
 Industry examples: pharmaceutical, biotechnology, medical devices, fashion, fintech, etc.
 
-Use the given tools to gather information and produce a concise market research summary (max 500 words)
+Use the given tools to gather information and produce a concise market research summary (max {summary_word_limit} words)
 that is suitable for executive briefings and strategic planning. Base your analysis solely on the
 sources provided—do not use external information or knowledge.
 Only respond to industry and market research questions. For any non-industry or off-topic 
@@ -90,11 +92,8 @@ Sources:
 * [Post title 3](url3)
 * [Post title 4](url4)
 * [Post title 5](url5)
-"""
+""".format(summary_word_limit=SUMMARY_WORD_LIMIT)
 )
-
-# Maximum tokens allowed per chat session before the user must reset; used for progress bar and cost control.
-TOKEN_LIMIT = 20000
 
 # Launch Streamlit UI only when run as main (e.g. streamlit run main.py), not when imported by tests.
 if __name__ == "__main__":

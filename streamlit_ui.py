@@ -5,10 +5,10 @@ from openai import AuthenticationError
 from langchain.messages import HumanMessage, AIMessage, AIMessageChunk
 from langchain_community.callbacks import get_openai_callback
 
-# Core logic lives in main: model config, token limit, system prompt, and agent factory.
+# Core logic: model config and agent from main; constants (e.g. token limit) from constants.
+from constants import TOKEN_LIMIT
 from main import (
     MODEL_CONFIG,
-    TOKEN_LIMIT,
     SYSTEM_MESSAGE,
     create_model_and_agent,
 )
