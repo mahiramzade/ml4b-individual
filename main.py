@@ -94,5 +94,6 @@ Sources:
 # Maximum tokens allowed per chat session before the user must reset; used for progress bar and cost control.
 TOKEN_LIMIT = 20000
 
-# Launch Streamlit UI (at end so streamlit_ui can import from this module without circular import issues).
-import streamlit_ui  # noqa: F401, E402
+# Launch Streamlit UI only when run as main (e.g. streamlit run main.py), not when imported by tests.
+if __name__ == "__main__":
+    import streamlit_ui  # noqa: F401
