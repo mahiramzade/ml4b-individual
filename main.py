@@ -36,10 +36,14 @@ MODEL_CONFIG = {
     "GPT 5.1": {
         "model_id": "gpt-5.1",
         "extra_kwargs": {"reasoning_effort": "none"},
+        "input_cost_per_million": 1.25,
+        "output_cost_per_million": 10.00,
     },
     "GPT 4.1 Mini": {
         "model_id": "gpt-4.1-mini-2025-04-14",
         "extra_kwargs": {},
+        "input_cost_per_million": 0.40,
+        "output_cost_per_million": 1.60,
     },
 }
 
@@ -86,10 +90,6 @@ st.set_page_config(page_title="LLM Chat", page_icon="💬", layout="wide")
 
 # Token limit configuration (in tokens)
 TOKEN_LIMIT = 20000
-
-# Pricing for gpt-5.1 (per 1M tokens)
-INPUT_COST_PER_MILLION = 1.25  # $1.25 per 1M input tokens
-OUTPUT_COST_PER_MILLION = 10.00  # $10.00 per 1M output tokens
 
 # Initialize chat history and token tracking
 if "messages" not in st.session_state:
@@ -271,11 +271,14 @@ if prompt := st.chat_input("Ask me about any industry..."):
                 st.session_state.completion_tokens += cb.completion_tokens
                 st.session_state.total_tokens += cb.total_tokens
 
-                # Calculate and update costs
-                input_cost = (cb.prompt_tokens / 1_000_000) * INPUT_COST_PER_MILLION
+                # Calculate and update costs based on selected model
+                model_config = MODEL_CONFIG[st.session_state.selected_model]
+                input_cost = (
+                    cb.prompt_tokens / 1_000_000
+                ) * model_config["input_cost_per_million"]
                 output_cost = (
                     cb.completion_tokens / 1_000_000
-                ) * OUTPUT_COST_PER_MILLION
+                ) * model_config["output_cost_per_million"]
                 st.session_state.input_cost += input_cost
                 st.session_state.output_cost += output_cost
 
