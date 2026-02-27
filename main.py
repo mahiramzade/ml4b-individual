@@ -67,37 +67,35 @@ def create_model_and_agent(api_key: str, model_name: str):
     return create_agent(model, [get_wikipedia_posts])
 
 
-# System prompt that defines the assistant as a market-research analyst and how to format answers (Summary + Sources).
+# System prompt: market-research assistant role and output format.
 SYSTEM_MESSAGE = SystemMessage(
     content="""\
-You are a research assistant for a business analyst who conducts market research at a large corporation.
-Your role is to support industry analysis, competitive intelligence, and strategic market assessments.
+You are an industry research assistant for a business analyst. Support industry analysis, market research and strategic assessments.
+Rules: 
+(1) If the industry is unclear, ask to clarify—do not guess. Industry examples: pharmaceutical, biotechnology, medical devices, fashion, fintech, etc. 
+(2) Use the tools to gather info; base analysis only on retrieved sources. 
+(3) Produce a concise industry research related summary that is suitable for executive briefings and strategic planning. 
+(4) Summary should consist of max {summary_word_limit} words. 
+(5) Only answer industry research questions; refuse off-topic requests (e.g. general knowledge, personal advice, other domains), instead clearly state that you are only for industry research and ask the user to ask an industry-related question.
 
-Do not guess the industry name—if unclear or ambiguous, ask the user to clarify.
-Industry examples: pharmaceutical, biotechnology, medical devices, fashion, fintech, etc.
-
-Use the given tools to gather information and produce a concise market research summary (max {summary_word_limit} words)
-that is suitable for executive briefings and strategic planning. Base your analysis solely on the
-sources provided—do not use external information or knowledge.
-Only respond to industry and market research questions. For any non-industry or off-topic 
-request (e.g. general knowledge, personal advice, other domains), do not answer the question; 
-instead clearly state that you are only for industry and market research and ask the user to ask an industry-related question.
-
-When an industry is provided, structure your response as follows:
-
+Your answer format when an industry is given:
 Summary
-(Analyze market dynamics, key players, trends, and factors relevant to corporate strategy.)
-
+(Key dynamics, players, trends, factors relevant to corporate strategy.)
 Sources:
-* [Post title 1](url1)
-* [Post title 2](url2)
-* [Post title 3](url3)
-* [Post title 4](url4)
-* [Post title 5](url5)
+* [Title 1](url1)
+* [Title 2](url2)
+* [Title 3](url3)
+* [Title 4](url4)
+* [Title 5](url5)
 """.format(summary_word_limit=SUMMARY_WORD_LIMIT)
 )
 
-# --- Streamlit UI (runs when executed via streamlit run main.py) ---
+# Human prompt: user role/context.
+# The intended user is a business analyst who conducts market research at a large corporation.
+HUMAN_PROMPT = """You are a business analyst who conducts market research at a large corporation.
+You ask questions about industries (e.g. pharmaceutical, fintech, biotechnology, fashion) to inform strategic planning and competitive intelligence."""
+
+# --- Streamlit UI ---
 if __name__ == "__main__":
     import streamlit as st
     from openai import AuthenticationError
@@ -226,8 +224,8 @@ if __name__ == "__main__":
             # Placeholder that we will update with streamed text (and a typing cursor).
             message_placeholder = st.empty()
 
-            # Build LangChain message list: system prompt + prior chat + current user prompt.
-            agent_messages = [SYSTEM_MESSAGE]
+            # Build LangChain message list: system + human prompt (user context) + prior chat + current user prompt.
+            agent_messages = [SYSTEM_MESSAGE, HumanMessage(content=HUMAN_PROMPT)]
             for msg in st.session_state.messages[:-1]:
                 if msg["role"] == "user":
                     agent_messages.append(HumanMessage(content=msg["content"]))
